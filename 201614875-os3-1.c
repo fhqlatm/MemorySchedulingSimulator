@@ -44,7 +44,6 @@ int process_count = 0;
 void memorySchedulingSimulator()
 {
 	int frame_num = 0;
-	int cur_frame = 0;
 
 	int totalrf = 0;
 	int totalpf = 0;
@@ -83,27 +82,29 @@ void memorySchedulingSimulator()
 		{
 			if(process[i]->ref_len > j)
 			{
-				cur_pte = (pte *)&pas[process[i]->references[j] + (i * VAS_PAGES)];
-				rf[i] += 1;
+				cur_pte = (pte *)&pas[i * PAGETABLE_FRAMES] + process[i]->references[j];
 				
 				if(cur_pte->vflag == PAGE_VALID)
 				{
 					cur_pte->ref += 1;
+					rf[i] += 1;
 				}
 
-				else
+				else if(cur_pte->vflag == PAGE_INVALID)
 				{
-					cur_pte->frame = frame_num;
+					frame_num += 1;
+
+					if (frame_num > PAS_FRAMES)
+					{
+						printf("Out of memory!!\n");
+						goto Report;
+					}
+
+					cur_pte->frame = frame_num - 1;
 					cur_pte->vflag = PAGE_VALID;
 					cur_pte->ref += 1;
-					frame_num += 1;
 					pf[i] += 1;
-				}
-
-				if (frame_num >= PAS_FRAMES)
-				{
-					printf("Out of memory!!\n");
-					goto Report;
+					rf[i] += 1;
 				}
 			}
 		}
@@ -117,16 +118,17 @@ Report:
 		totalpf += pf[i];
 		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, pf[i] + PAGETABLE_FRAMES, pf[i], rf[i]);
 
+
 		for(int j = 0; j < VAS_PAGES; j++)
 		{
-			cur_pte = (pte *)&pas[i*VAS_PAGES + j];
+			cur_pte = (pte *)&pas[i * PAGETABLE_FRAMES] + j;
 
 			if(cur_pte->vflag == PAGE_VALID)
 				printf("%03d -> %03d REF=%03d\n", j, cur_pte->frame, cur_pte->ref);
 		}
 	}
 
-	printf("Total: Allocated Frames=%03d Page Faults/References=%03d/%03d\n", totalpf + i * PAGETABLE_FRAMES, totalpf, totalrf);
+	printf("Total: Allocated Frames=%03d Page Faults/References=%03d/%03d\n", totalpf + process_count * PAGETABLE_FRAMES, totalpf, totalrf);
 
 	free(rf);
 	free(pf);
