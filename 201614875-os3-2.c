@@ -142,6 +142,7 @@ Report:
 		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, pf[i] + PAGETABLE_FRAMES, pf[i], rf[i]);
 
 		cur_pte = (pte *)&pas[i];
+
 		for(int j = 0; j < PAGETABLE_FRAMES; j++)
 		{
 			cur_pte += j;
@@ -157,7 +158,7 @@ Report:
 					cur_pte += k;
 
 					if(cur_pte->vflag == PAGE_VALID);
-						printf("(L2PT) %03d -> %03d REF=%03d\n", cur_pte->frame, cur_pte->ref);
+						printf("(L2PT) %03d -> %03d REF=%03d\n", PAGETABLE_FRAMES * j + k,cur_pte->frame, cur_pte->ref);
 				}
 			}
 		}
