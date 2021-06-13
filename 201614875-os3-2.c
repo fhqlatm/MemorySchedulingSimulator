@@ -44,32 +44,30 @@ int process_count = 0;
 void memorySchedulingSimulator()
 {
 	int frame_num = 0;
-
-	int totalpage = 0;
+	int totalframe = 0;
 	int totalrf = 0;
 	int totalpf = 0;
-	int *rf = (int *) malloc(sizeof(int) * process_count);
-	int *pf = (int *) malloc(sizeof(int) * process_count);
-	rf[0] = 0;
-	pf[0] = 0;
+
+	int *f = (int *) calloc(process_count, sizeof(int));
+	int *rf = (int *) calloc(process_count, sizeof(int));
+	int *pf = (int *) calloc(process_count, sizeof(int));
 
 	pte *cur_pte;
-
 	frame *pas = (frame *) malloc(PAS_SIZE);
 
 	/* pagetable allocation */
 	for(int i = 0; i < process_count; i++)
 	{
-		cur_pte = (pte *)&pas[i];
-
 		for(int j = 0; j < PAGETABLE_FRAMES; j++)
 		{
+			cur_pte = (pte *)&pas[i] + j;
+		
 			cur_pte->ref = 0;
 			cur_pte->vflag = PAGE_INVALID;
-			cur_pte += 1;
 		}
 
-		totalpage += 1;
+		frame_num += 1;
+		totalframe += 1;
 	}
 	
 	/* page access */
@@ -84,28 +82,28 @@ void memorySchedulingSimulator()
 				/* L1 pagetable */
 				if(cur_pte->vflag == PAGE_VALID)
 				{
-					cur_pte = (pte *)&pas[cur_pte->frame];
+					//printf("L1 %d : %d : %d", i, process[i]->references[j], cur_pte->frame);	
 				}
 
 				else
 				{
-					frame_num += 1;
-
-					if (frame_num > PAS_FRAMES)
+					if (frame_num >= PAS_FRAMES)
 					{
 						printf("Out of memory!!\n");
 						goto Report;
 					}
 
-					cur_pte->frame = frame_num - 1;
+					cur_pte->frame = frame_num;
+					frame_num += 1;
+
 					cur_pte->vflag = PAGE_VALID;
-					cur_pte->ref += 1;
-					totalpage += 1;
+					totalframe += 1;
 					pf[i] += 1;
-					rf[i] += 1;
 				}
 
 				/* L2 pagetable */
+				cur_pte = (pte *)&pas[cur_pte->frame] + (process[i]->references[j] % 8);
+
 				if(cur_pte->vflag == PAGE_VALID)
 				{
 					cur_pte->ref += 1;
@@ -114,18 +112,18 @@ void memorySchedulingSimulator()
 
 				else
 				{
-					frame_num += 1;
-
-					if (frame_num > PAS_FRAMES)
+					if (frame_num >= PAS_FRAMES)
 					{
 						printf("Out of memory!!\n");
 						goto Report;
 					}
 
-					cur_pte->frame = frame_num - 1;
+					cur_pte->frame = frame_num;
+					frame_num += 1;
+
 					cur_pte->vflag = PAGE_VALID;
 					cur_pte->ref += 1;
-					totalpage += 1;
+					totalframe += 1;
 					pf[i] += 1;
 					rf[i] += 1;
 				}
@@ -139,13 +137,11 @@ Report:
 	{
 		totalrf += rf[i];
 		totalpf += pf[i];
-		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, pf[i] + PAGETABLE_FRAMES, pf[i], rf[i]);
-
-		cur_pte = (pte *)&pas[i];
+		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, pf[i] + 1, pf[i], rf[i]);
 
 		for(int j = 0; j < PAGETABLE_FRAMES; j++)
 		{
-			cur_pte += j;
+			cur_pte = (pte *)&pas[i] + j;
 
 			if(cur_pte->vflag == PAGE_VALID)
 			{
@@ -155,16 +151,16 @@ Report:
 				
 				for(int k = 0; k < PAGETABLE_FRAMES; k++)
 				{
-					cur_pte += k;
+					if(cur_pte->vflag == PAGE_VALID)
+						printf("(L2PT) %03d -> %03d REF=%03d\n", PAGETABLE_FRAMES * j + k, cur_pte->frame, cur_pte->ref);
 
-					if(cur_pte->vflag == PAGE_VALID);
-						printf("(L2PT) %03d -> %03d REF=%03d\n", PAGETABLE_FRAMES * j + k,cur_pte->frame, cur_pte->ref);
+					cur_pte += 1;
 				}
 			}
 		}
 	}
 
-	printf("Total: Allocated Frames=%03d Page Faults/References=%03d/%03d\n", totalpage, totalpf, totalrf);
+	printf("Total: Allocated Frames=%03d Page Faults/References=%03d/%03d\n", totalframe, totalpf, totalrf);
 
 	free(rf);
 	free(pf);

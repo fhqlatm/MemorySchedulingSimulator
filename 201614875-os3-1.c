@@ -44,16 +44,12 @@ int process_count = 0;
 void memorySchedulingSimulator()
 {
 	int frame_num = 0;
-
 	int totalrf = 0;
 	int totalpf = 0;
-	int *rf = (int *) malloc(sizeof(int) * process_count);
-	int *pf = (int *) malloc(sizeof(int) * process_count);
-	rf[0] = 0;
-	pf[0] = 0;
+	int *rf = (int *) calloc(process_count, sizeof(int));
+	int *pf = (int *) calloc(process_count, sizeof(int));
 
 	pte *cur_pte;
-
 	frame *pas = (frame *) malloc(PAS_SIZE);
 
 	/* pagetable allocation */
@@ -92,15 +88,15 @@ void memorySchedulingSimulator()
 
 				else if(cur_pte->vflag == PAGE_INVALID)
 				{
-					frame_num += 1;
-
-					if (frame_num > PAS_FRAMES)
+					if (frame_num >= PAS_FRAMES)
 					{
 						printf("Out of memory!!\n");
 						goto Report;
 					}
 
-					cur_pte->frame = frame_num - 1;
+					cur_pte->frame = frame_num;
+					frame_num += 1;
+
 					cur_pte->vflag = PAGE_VALID;
 					cur_pte->ref += 1;
 					pf[i] += 1;
