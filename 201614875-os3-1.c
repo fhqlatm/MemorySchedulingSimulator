@@ -126,6 +126,8 @@ Report:
 		}
 	}
 
+	printf("Total: Allocated Frames=%03d Page Faults/References=%03d/%03d\n", totalpf + i * PAGETABLE_FRAMES, totalpf, totalrf);
+
 	free(rf);
 	free(pf);
 }
