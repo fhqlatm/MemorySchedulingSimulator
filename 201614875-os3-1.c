@@ -44,12 +44,20 @@ int process_count = 0;
 void memorySchedulingSimulator()
 {
 	int frame_num = 0;
-
-	frame *pas = (frame *) malloc(PAS_SIZE);
-	
 	int cur_frame = 0;
+
+	int totalrf = 0;
+	int totalpf = 0;
+	int *rf = (int *) malloc(sizeof(int) * process_count);
+	int *pf = (int *) malloc(sizeof(int) * process_count);
+	rf[0] = 0;
+	pf[0] = 0;
+
 	pte *cur_pte;
 
+	frame *pas = (frame *) malloc(PAS_SIZE);
+
+	/* pagetable allocation */
 	for(int i = 0; i < process_count; i++)
 	{
 		for(int j = 0; j < PAGETABLE_FRAMES; j++)
@@ -61,10 +69,10 @@ void memorySchedulingSimulator()
 				cur_pte->ref = 0;
 				cur_pte->vflag = PAGE_INVALID;
 
-				cur_pte++;
+				cur_pte += 1;
 			}	
 			
-			frame_num++;
+			frame_num += 1;
 		}
 	}
 	
@@ -73,11 +81,10 @@ void memorySchedulingSimulator()
 	{
 		for(int i = 0; i < process_count; i++)
 		{
-			if(process[i]->ref_len <= j)
+			if(process[i]->ref_len > j)
 			{
-				cur_frame = process[i]->references[j] / 8;
-				cur_pte = (pte *)&pas[i*8 + cur_frame];
-				cur_pte += process[i]->references[j] % 8;
+				cur_pte = (pte *)&pas[process[i]->references[j] + (i * VAS_PAGES)];
+				rf[i] += 1;
 				
 				if(cur_pte->vflag == PAGE_VALID)
 				{
@@ -87,11 +94,40 @@ void memorySchedulingSimulator()
 				else
 				{
 					cur_pte->frame = frame_num;
+					cur_pte->vflag = PAGE_VALID;
 					cur_pte->ref += 1;
+					frame_num += 1;
+					pf[i] += 1;
+				}
+
+				if (frame_num >= PAS_FRAMES)
+				{
+					printf("Out of memory!!\n");
+					goto Report;
 				}
 			}
 		}
 	}
+
+Report:
+	/* report */
+	for(int i = 0; i < process_count; i++)
+	{
+		totalrf += rf[i];
+		totalpf += pf[i];
+		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, pf[i] + PAGETABLE_FRAMES, pf[i], rf[i]);
+
+		for(int j = 0; j < VAS_PAGES; j++)
+		{
+			cur_pte = (pte *)&pas[i*VAS_PAGES + j];
+
+			if(cur_pte->vflag == PAGE_VALID)
+				printf("%03d -> %03d REF=%03d\n", j, cur_pte->frame, cur_pte->ref);
+		}
+	}
+
+	free(rf);
+	free(pf);
 }
 
 int main(int argc, char* argv[])
@@ -116,7 +152,7 @@ int main(int argc, char* argv[])
 			if(fread(&process[i]->ref_len, sizeof(int), 1, stdin) < 1)
 				printf("error1\n");
 
-			printf("%d %d\n", process[i]->pid, process[i]->ref_len);
+			//printf("%d %d\n", process[i]->pid, process[i]->ref_len);
 
 			process[i]->references = malloc(sizeof(unsigned char) * process[i]->ref_len);
 			
@@ -126,7 +162,7 @@ int main(int argc, char* argv[])
 					printf("error2\n");
 
 					
-				printf("%d\n", process[i]->references[j]);
+				//printf("%d\n", process[i]->references[j]);
 			}
 		}
 	}
