@@ -68,6 +68,7 @@ void memorySchedulingSimulator()
 
 		frame_num += 1;
 		totalframe += 1;
+		f[i] += 1;
 	}
 	
 	/* page access */
@@ -98,6 +99,7 @@ void memorySchedulingSimulator()
 
 					cur_pte->vflag = PAGE_VALID;
 					totalframe += 1;
+					f[i] += 1;
 					pf[i] += 1;
 				}
 
@@ -124,6 +126,7 @@ void memorySchedulingSimulator()
 					cur_pte->vflag = PAGE_VALID;
 					cur_pte->ref += 1;
 					totalframe += 1;
+					f[i] += 1;
 					pf[i] += 1;
 					rf[i] += 1;
 				}
@@ -137,7 +140,7 @@ Report:
 	{
 		totalrf += rf[i];
 		totalpf += pf[i];
-		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, pf[i] + 1, pf[i], rf[i]);
+		printf("** Process %03d: Allocated Frames=%03d PageFaults/References=%03d/%03d\n", i, f[i], pf[i], rf[i]);
 
 		for(int j = 0; j < PAGETABLE_FRAMES; j++)
 		{
